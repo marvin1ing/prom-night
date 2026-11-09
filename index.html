@@ -54,6 +54,8 @@
   --stage-veil: #080A18;
   --env-back: #C9B488;
   --film: #2A1A10;
+  --stamp: #FF9A40;
+  --stamp-glow: rgba(255, 110, 30, .9);
   --film-empty: rgba(243, 233, 207, .08);
   --neg: #6B3A16;
   --neg-hi: #B9763A;
@@ -466,6 +468,12 @@ body[data-screen="album"] .col { max-width: 920px; }
 .finder { position: relative; width: 100%; max-width: 420px; aspect-ratio: 3 / 4; margin: 10px auto 0; overflow: hidden; border-radius: 14px; background: var(--night);
   box-shadow: 0 0 0 6px var(--wax), 0 0 0 7px var(--gold-lo), 0 24px 50px var(--shadow); }
 .finder canvas { display: block; width: 100%; height: 100%; }
+.finder-stamp { position: absolute; right: 5%; bottom: 3.2%; color: var(--stamp); font-family: var(--font-mono); font-size: clamp(14px, 4.4vw, 21px); font-weight: 500; text-shadow: 0 0 6px var(--stamp-glow); pointer-events: none; }
+.films { display: grid; gap: 8px; }
+.film-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.film-chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--sky-line-strong); border-radius: 999px; background: transparent; color: var(--sky-ink); font-size: 15.5px; font-weight: 600; }
+.film-chip[aria-checked="true"] { border-color: var(--gold-hi); background: var(--gold-hi); color: var(--night); }
+.film-desc { color: var(--sky-muted); font-size: 15px; }
 .finder-count { position: absolute; right: 12px; top: 12px; padding: 4px 10px; border-radius: 999px; background: var(--glass); color: var(--flame); font-family: var(--font-mono); font-size: 16px; font-variant-numeric: tabular-nums; }
 .finder-flip { position: absolute; left: 12px; top: 12px; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--sky-line-strong); border-radius: 50%; background: var(--glass); color: var(--sky-ink); }
 .cam-status { color: var(--sky-ink); font-size: 18px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
@@ -670,6 +678,7 @@ body[data-screen="album"] .col { max-width: 920px; }
         <div class="finder" id="finder" hidden>
           <canvas id="finder-canvas" role="img"></canvas>
           <span class="finder-count" id="finder-count" aria-hidden="true"></span>
+          <span class="finder-stamp" id="finder-stamp" aria-hidden="true"></span>
           <button type="button" class="finder-flip" id="finder-flip"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9a8 8 0 0 1 14.5-3.5L20 7"/><path d="M20 3v4h-4"/><path d="M20 15a8 8 0 0 1-14.5 3.5L4 17"/><path d="M4 21v-4h4"/></svg></button>
         </div>
         <video id="finder-video" playsinline muted hidden></video>
@@ -679,6 +688,9 @@ body[data-screen="album"] .col { max-width: 920px; }
           <span class="cam-lens"></span><span class="cam-wind"></span><span class="cam-count" id="cam-count"></span>
         </div>
         <div class="cam-panel">
+          <div class="films"><span class="roll-label" id="films-label" data-t="filmLabel">Film</span>
+            <div class="film-chips" id="film-chips" role="radiogroup" aria-labelledby="films-label"></div>
+            <p class="film-desc" id="film-desc"></p></div>
           <p class="cam-status" id="cam-status" aria-live="polite"></p>
           <button type="button" class="btn btn-wax btn-block" id="cam-shoot"></button>
           <input type="file" class="vh" id="cam-input" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
@@ -926,6 +938,11 @@ body[data-screen="album"] .col { max-width: 920px; }
       openAlbum: 'Open the album',
       liveNote: 'This preview link can’t open a live viewfinder, so your phone’s own camera opens instead. On the real site you see the film look live before you shoot.',
       flip: 'Switch camera', finderLabel: 'Viewfinder with the film look',
+      filmLabel: 'Film', film_warm: 'Warm 400', film_gold: 'Gold 200', film_night: 'Night 800T', film_flash: 'Flash',
+      filmDesc_warm: 'Soft and warm, kind to skin. Modeled on Portra 400.',
+      filmDesc_gold: 'Golden and punchy, like a summer roll. Modeled on Gold 200.',
+      filmDesc_night: 'Cool lamplight colours with a red glow around lights. Made for the dance floor. Modeled on CineStill 800T.',
+      filmDesc_flash: 'Contrasty throwaway-camera look with green shadows and dark corners.',
     },
     zh: {
       demo: '演示版', sample: '演示数据',
@@ -1015,6 +1032,11 @@ body[data-screen="album"] .col { max-width: 920px; }
       openAlbum: '打开相册',
       liveNote: '这个预览链接打不开实时取景，所以会改用手机自带的相机。在正式网站上，按快门前就能实时看到胶片效果。',
       flip: '切换前后摄像头', finderLabel: '带胶片效果的取景器',
+      filmLabel: '胶卷', film_warm: '暖调 400', film_gold: '金色 200', film_night: '夜景 800T', film_flash: '闪光机',
+      filmDesc_warm: '柔和偏暖，拍人最好看。参考 Portra 400。',
+      filmDesc_gold: '金黄饱和，像夏天的胶卷。参考 Gold 200。',
+      filmDesc_night: '偏冷的灯光色调，亮处带红色光晕，最适合舞池。参考 CineStill 800T。',
+      filmDesc_flash: '反差大、暗部偏绿、四角暗，像开了闪光的一次性相机。',
     },
   };
 
@@ -1075,7 +1097,7 @@ body[data-screen="album"] .col { max-width: 920px; }
     tallyNom: { king: {}, queen: {} }, tallyFin: { king: {}, queen: {} },
     ballotsNom: 0, ballotsFin: 0, finalSeeded: false,
     photos: {}, last: null, armed: null, sound: true, sheetRound: null,
-    cam: { code: null, used: {} }, camError: null, camBusy: false, camFresh: -1,
+    cam: { code: null, used: {}, film: 'warm' }, camError: null, camBusy: false, camFresh: -1,
     roll: [], developed: false, developing: false, isOrg: false, lb: -1, lbArmed: false,
   };
   const SHOTS = 15;
@@ -1102,7 +1124,7 @@ body[data-screen="album"] .col { max-width: 920px; }
     S.armed = null;
     S.roll.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* ignore */ } });
     S.roll = [];
-    S.cam = { code: null, used: {} };
+    S.cam = { code: null, used: {}, film: 'warm' };
     S.camError = null;
     S.developed = false;
     S.developing = false;
@@ -1995,6 +2017,155 @@ body[data-screen="album"] .col { max-width: 920px; }
     else if (!stage.hidden) closeStage();
   });
 
+/* Film engine: a real-time film grade on the GPU (WebGL 1). */
+  const FILMS = {
+    warm: { // soft, warm-neutral portrait stock (Portra 400 style)
+      wb: [1.03, 1.0, 0.95], exp: 0.1, contrast: -0.04, black: [0.042, 0.036, 0.04], white: 0.975,
+      shTint: [-0.012, 0.004, 0.014], hiTint: [0.022, 0.009, -0.016],
+      sat: 0.86, warmSat: 1.06, greenShift: -0.022, greenSat: 0.78, blueSat: 0.84,
+      hal: 0.16, halTh: 0.72, halColor: [1.0, 0.36, 0.16], grain: 0.042, grainSize: 1.35, vig: 0.2, ca: 0.0015, leak: 0,
+    },
+    gold: { // warm, golden, punchy consumer stock (Gold 200 style)
+      wb: [1.07, 1.01, 0.86], exp: 0.06, contrast: 0.16, black: [0.05, 0.036, 0.026], white: 0.98,
+      shTint: [0.012, 0.0, -0.016], hiTint: [0.03, 0.016, -0.03],
+      sat: 1.06, warmSat: 1.2, greenShift: -0.035, greenSat: 0.92, blueSat: 0.88,
+      hal: 0.13, halTh: 0.72, halColor: [1.0, 0.42, 0.15], grain: 0.056, grainSize: 1.45, vig: 0.26, ca: 0.002, leak: 0.16,
+    },
+    night: { // tungsten-balanced cinema stock with red halation (CineStill 800T style)
+      wb: [0.86, 0.99, 1.22], exp: 0.2, contrast: 0.2, black: [0.02, 0.04, 0.056], white: 0.98,
+      shTint: [-0.022, 0.01, 0.032], hiTint: [0.024, 0.004, -0.012],
+      sat: 1.0, warmSat: 1.12, greenShift: 0.03, greenSat: 0.78, blueSat: 1.04,
+      hal: 0.62, halTh: 0.6, halColor: [1.0, 0.17, 0.07], grain: 0.075, grainSize: 1.6, vig: 0.3, ca: 0.0025, leak: 0,
+    },
+    flash: { // throwaway camera with flash: contrasty, green shadows, heavy vignette
+      wb: [1.0, 1.02, 0.95], exp: 0.0, contrast: 0.36, black: [0.03, 0.05, 0.038], white: 0.99,
+      shTint: [-0.01, 0.016, 0.0], hiTint: [0.016, 0.01, -0.004],
+      sat: 1.14, warmSat: 1.1, greenShift: 0.0, greenSat: 1.02, blueSat: 1.0,
+      hal: 0.1, halTh: 0.75, halColor: [1.0, 0.4, 0.2], grain: 0.085, grainSize: 1.7, vig: 0.46, ca: 0.004, leak: 0.24,
+    },
+  };
+  
+  const FILM_FRAG = `
+  precision highp float;
+  varying vec2 v_uv;
+  uniform sampler2D u_tex;
+  uniform vec2 u_res;
+  uniform vec4 u_crop;
+  uniform float u_mirror, u_seed, u_exp, u_contrast, u_white, u_sat, u_warmSat, u_greenShift, u_greenSat, u_blueSat;
+  uniform float u_hal, u_halTh, u_grain, u_grainSize, u_vig, u_ca, u_leak, u_leakY, u_leakSide;
+  uniform vec3 u_wb, u_black, u_shTint, u_hiTint, u_halColor;
+  vec2 src(vec2 uv) { uv.x = mix(uv.x, 1.0 - uv.x, u_mirror); uv.y = 1.0 - uv.y; return u_crop.xy + clamp(uv, 0.0, 1.0) * u_crop.zw; }
+  vec3 toLin(vec3 c) { return pow(max(c, 0.0), vec3(2.2)); }
+  vec3 toGam(vec3 c) { return pow(max(c, 0.0), vec3(1.0 / 2.2)); }
+  float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+  float hash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+  float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+  vec3 rgb2hsv(vec3 c) { vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y); float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x); }
+  vec3 hsv2rgb(vec3 c) { vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0); vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y); }
+  float band(float h, float c, float w) { float d = abs(fract(h - c + 0.5) - 0.5); return 1.0 - smoothstep(0.0, w, d); }
+  void main() {
+    vec2 uv = v_uv;
+    vec2 cc = uv - 0.5;
+    float aspect = u_res.x / u_res.y;
+    vec2 caOff = cc * u_ca * dot(cc, cc) * 8.0;
+    vec3 c = vec3(texture2D(u_tex, src(uv + caOff)).r, texture2D(u_tex, src(uv)).g, texture2D(u_tex, src(uv - caOff)).b);
+    vec3 x = toLin(c) * u_wb * exp2(u_exp);
+    float acc = 0.0;
+    for (int i = 0; i < 18; i++) {
+      float fi = float(i);
+      float ring = floor(fi / 6.0);
+      float a = (mod(fi, 6.0) + 0.5 * mod(ring, 2.0)) * 1.0471976;
+      float rad = 0.005 + ring * ring * 0.0065 + ring * 0.004;
+      vec2 o = vec2(cos(a) / aspect, sin(a)) * rad;
+      float l = luma(toLin(texture2D(u_tex, src(uv + o)).rgb));
+      acc += max(l - u_halTh, 0.0) * (1.0 - ring * 0.25);
+    }
+    x += u_halColor * acc * 0.24 * u_hal;
+    x = x / (1.0 + 0.22 * x) * 1.22;
+    vec3 d = clamp(toGam(x), 0.0, 1.0);
+    d = clamp(mix(d, d * d * (3.0 - 2.0 * d), u_contrast), 0.0, 1.0);
+    vec3 hsv = rgb2hsv(d);
+    float wWarm = band(hsv.x, 0.075, 0.075);
+    float wGreen = band(hsv.x, 0.30, 0.11);
+    float wBlue = band(hsv.x, 0.60, 0.10);
+    hsv.x = fract(hsv.x + u_greenShift * wGreen);
+    hsv.y = clamp(hsv.y * u_sat * mix(1.0, u_warmSat, wWarm) * mix(1.0, u_greenSat, wGreen) * mix(1.0, u_blueSat, wBlue), 0.0, 1.0);
+    d = hsv2rgb(hsv);
+    float L = luma(d);
+    d += u_shTint * (1.0 - smoothstep(0.0, 0.55, L)) + u_hiTint * smoothstep(0.45, 1.0, L);
+    d = u_black + clamp(d, 0.0, 1.0) * (vec3(u_white) - u_black);
+    if (u_leak > 0.0) {
+      float lx = mix(uv.x, 1.0 - uv.x, u_leakSide);
+      float lk = exp(-lx * lx * 16.0) * exp(-pow((uv.y - u_leakY) * 2.0, 2.0));
+      d = 1.0 - (1.0 - d) * (1.0 - vec3(1.0, 0.46, 0.16) * lk * u_leak);
+    }
+    d *= 1.0 - u_vig * smoothstep(0.28, 0.78, length(cc * vec2(min(aspect, 1.0), min(1.0 / aspect, 1.0))) * 1.25);
+    vec2 gp = gl_FragCoord.xy / u_grainSize + u_seed * vec2(17.0, 31.0);
+    float g = vnoise(gp) * 0.65 + hash(gp * 1.7) * 0.35 - 0.5;
+    float gc = hash(gp + 7.3) - 0.5;
+    float wL = 1.0 - pow(abs(2.0 * L - 1.0), 2.0) * 0.7;
+    d += (vec3(g) + vec3(gc * 0.3, 0.0, -gc * 0.3)) * u_grain * wL * 1.7;
+    gl_FragColor = vec4(clamp(d, 0.0, 1.0), 1.0);
+  }`;
+  
+  function makeFilmGL(canvas, preserve) {
+    const opts = { preserveDrawingBuffer: !!preserve, premultipliedAlpha: false, antialias: false, alpha: false };
+    let gl = null;
+    try { gl = canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts); } catch (e) { gl = null; }
+    if (!gl) return null;
+    const sh = (type, srcText) => { const s = gl.createShader(type); gl.shaderSource(s, srcText); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    let prog;
+    try {
+      prog = gl.createProgram();
+      gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 a; varying vec2 v_uv; void main(){ v_uv = a * 0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }'));
+      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FILM_FRAG));
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    } catch (e) { return null; }
+    gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'a');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    [[gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR]]
+      .forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+    const U = {};
+    const u = name => (U[name] !== undefined ? U[name] : (U[name] = gl.getUniformLocation(prog, name)));
+    return {
+      canvas,
+      render(srcEl, sw, sh2, W, H, film, o) {
+        if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+        gl.viewport(0, 0, W, H);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcEl);
+        const r = W / H;
+        let cw = sw, ch = sw / r;
+        if (ch > sh2) { ch = sh2; cw = sh2 * r; }
+        gl.uniform4f(u('u_crop'), (sw - cw) / 2 / sw, (sh2 - ch) / 2 / sh2, cw / sw, ch / sh2);
+        gl.uniform2f(u('u_res'), W, H);
+        gl.uniform1f(u('u_mirror'), o.mirror ? 1 : 0);
+        gl.uniform1f(u('u_seed'), o.seed || 0);
+        gl.uniform1f(u('u_leakY'), o.leakY === undefined ? 0.4 : o.leakY);
+        gl.uniform1f(u('u_leakSide'), o.leakSide ? 1 : 0);
+        gl.uniform1f(u('u_grainSize'), film.grainSize * Math.max(0.75, H / 1000));
+        ['exp', 'contrast', 'white', 'sat', 'warmSat', 'greenShift', 'greenSat', 'blueSat', 'hal', 'halTh', 'grain', 'vig', 'ca', 'leak']
+          .forEach(k => gl.uniform1f(u('u_' + k), film[k]));
+        ['wb', 'black', 'shTint', 'hiTint', 'halColor'].forEach(k => gl.uniform3fv(u('u_' + k), film[k]));
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      },
+    };
+  }
+
   /* ---------- disposable camera ---------- */
   const pad2 = n => String(n).padStart(2, '0');
   const stampText = d => `'${String(d.getFullYear()).slice(2)} ${pad2(d.getMonth() + 1)} ${pad2(d.getDate())}`;
@@ -2043,20 +2214,40 @@ body[data-screen="album"] .col { max-width: 920px; }
     x.fillStyle = x.createPattern(GRAIN[o.grain % 3], 'repeat');
     x.fillRect(0, 0, (W + 192) / s + 192, (H + 192) / s + 192);
     x.restore();
-    const fs = Math.max(12, Math.round(Math.min(W, H) * 0.05));
+    drawStamp(x, W, H, o.when);
+  }
+  function drawStamp(x, W, H, when) {
+    const fs = Math.max(12, Math.round(Math.min(W, H) * 0.045));
     x.save();
     x.font = `500 ${fs}px "IBM Plex Mono", ui-monospace, monospace`;
     x.textAlign = 'right'; x.textBaseline = 'bottom';
     x.shadowColor = 'rgba(255,110,30,0.9)'; x.shadowBlur = fs * 0.5;
     x.fillStyle = '#FF9A40';
-    x.fillText(stampText(o.when), W - fs * 0.9, H - fs * 0.7);
+    x.fillText(stampText(when), W - fs * 0.9, H - fs * 0.7);
     x.restore();
   }
+  let captureGL;
+  function gradeTo2D(srcEl, sw, sh, W, H, filmId, o, when) {
+    if (captureGL === undefined) captureGL = makeFilmGL(document.createElement('canvas'), true);
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    const x = out.getContext('2d');
+    if (captureGL) {
+      captureGL.render(srcEl, sw, sh, W, H, FILMS[filmId] || FILMS.warm, o);
+      x.drawImage(captureGL.canvas, 0, 0);
+      drawStamp(x, W, H, when);
+    } else {
+      renderFilm(x, W, H, { draw: xx => coverDraw(xx, srcEl, sw, sh, W, H, o.mirror), when, grain: 0, shift: Math.floor(o.seed || 0), leak: { x: o.leakSide ? 1 : 0, y: o.leakY } });
+    }
+    return out;
+  }
+  const FILM_IDS = ['warm', 'gold', 'night', 'flash'];
   function filmify(draw, w, h, when, rnd) {
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    renderFilm(c.getContext('2d'), w, h, { draw, when, grain: Math.floor(rnd() * 3), shift: Math.floor(rnd() * 192), leak: { x: rnd() < 0.5 ? 0 : 1, y: rnd() } });
-    return c;
+    const base = document.createElement('canvas');
+    base.width = w; base.height = h;
+    draw(base.getContext('2d'), w, h);
+    const film = FILM_IDS[Math.floor(rnd() * FILM_IDS.length)];
+    return gradeTo2D(base, w, h, w, h, film, { seed: rnd() * 100, leakY: rnd(), leakSide: rnd() < 0.5 }, when);
   }
 
   /* live viewfinder */
@@ -2071,16 +2262,29 @@ body[data-screen="album"] .col { max-width: 920px; }
     x.drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, W, H);
     if (mirror) x.setTransform(1, 0, 0, 1, 0, 0);
   }
+  let finderGL;
+  let lastStamp = '';
   function liveLoop() {
     if (!Live.on) return;
     const v = finderVideo;
     if (v.videoWidth) {
-      if (finderCanvas.width !== 600) { finderCanvas.width = 600; finderCanvas.height = 800; }
+      const W = Math.min(1080, Math.round((finderCanvas.clientWidth || 360) * Math.min(window.devicePixelRatio || 1, 2)));
+      const H = Math.round(W * 4 / 3);
       Live.frame += 1;
-      renderFilm(finderCanvas.getContext('2d'), 600, 800, {
-        draw: (x, W, H) => coverDraw(x, v, v.videoWidth, v.videoHeight, W, H, Live.facing === 'user'),
-        when: new Date(), grain: Math.floor(Live.frame / 2), shift: Live.frame * 53, leak: leakNow(),
-      });
+      if (finderGL === undefined) finderGL = makeFilmGL(finderCanvas, false);
+      const lk = leakNow();
+      if (finderGL) {
+        finderGL.render(v, v.videoWidth, v.videoHeight, W, H, FILMS[S.cam.film] || FILMS.warm,
+          { mirror: Live.facing === 'user', seed: (Math.floor(Live.frame / 2) * 1.618) % 100, leakY: lk.y, leakSide: Live.side });
+      } else {
+        if (finderCanvas.width !== W) { finderCanvas.width = W; finderCanvas.height = H; }
+        renderFilm(finderCanvas.getContext('2d'), W, H, {
+          draw: (x, w2, h2) => coverDraw(x, v, v.videoWidth, v.videoHeight, w2, h2, Live.facing === 'user'),
+          when: new Date(), grain: Math.floor(Live.frame / 2), shift: Live.frame * 53, leak: lk,
+        });
+      }
+      const st = stampText(new Date());
+      if (st !== lastStamp) { lastStamp = st; $('#finder-stamp').textContent = finderGL ? st : ''; }
     }
     Live.raf = requestAnimationFrame(liveLoop);
   }
@@ -2113,13 +2317,9 @@ body[data-screen="album"] .col { max-width: 920px; }
     const v = finderVideo;
     const H = Math.round(Math.min(1600, v.videoHeight, v.videoWidth * 4 / 3));
     const W = Math.round(H * 3 / 4);
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    renderFilm(c.getContext('2d'), W, H, {
-      draw: (x) => coverDraw(x, v, v.videoWidth, v.videoHeight, W, H, Live.facing === 'user'),
-      when, grain: Live.frame, shift: Live.frame * 53, leak: leakNow(),
-    });
-    return toURL(c);
+    const lk = leakNow();
+    return toURL(gradeTo2D(v, v.videoWidth, v.videoHeight, W, H, S.cam.film,
+      { mirror: Live.facing === 'user', seed: (Live.frame * 1.618) % 100, leakY: lk.y, leakSide: Live.side }, when));
   }
   $('#finder-flip').addEventListener('click', () => {
     Live.facing = Live.facing === 'user' ? 'environment' : 'user';
@@ -2127,7 +2327,7 @@ body[data-screen="album"] .col { max-width: 920px; }
     startLive();
   });
   const toURL = c => new Promise(res => {
-    try { c.toBlob(b => res(b ? URL.createObjectURL(b) : c.toDataURL('image/jpeg', 0.8)), 'image/jpeg', 0.82); }
+    try { c.toBlob(b => res(b ? URL.createObjectURL(b) : c.toDataURL('image/jpeg', 0.88)), 'image/jpeg', 0.9); }
     catch (err) { res(c.toDataURL('image/jpeg', 0.8)); }
   });
   function loadImage(file) {
@@ -2141,11 +2341,13 @@ body[data-screen="album"] .col { max-width: 920px; }
   }
   async function processPhoto(file, when) {
     const { img, u } = await loadImage(file);
-    const s = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const s = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
-    const c = filmify(x => x.drawImage(img, 0, 0, w, h), w, h, when, Math.random);
+    const base = document.createElement('canvas');
+    base.width = w; base.height = h;
+    base.getContext('2d').drawImage(img, 0, 0, w, h);
     URL.revokeObjectURL(u);
-    return toURL(c);
+    return toURL(gradeTo2D(base, w, h, w, h, S.cam.film, { seed: Math.random() * 100, leakY: Math.random(), leakSide: Math.random() < 0.5 }, when));
   }
   /* demo photos: drawn by the page so the album has something in it */
   function scene(i) {
@@ -2228,6 +2430,8 @@ body[data-screen="album"] .col { max-width: 920px; }
     const ln = $('#cam-live-note');
     ln.hidden = !Live.failed;
     ln.textContent = Live.failed ? t('liveNote') : '';
+    $('#film-chips').innerHTML = FILM_IDS.map(f => `<button type="button" class="film-chip" role="radio" data-film="${f}" aria-checked="${S.cam.film === f}">${esc(t('film_' + f))}</button>`).join('');
+    $('#film-desc').textContent = t('filmDesc_' + S.cam.film);
     $('#cam-exp').textContent = t('camStub', { m: SHOTS });
     $('#cam-count').textContent = left;
     $('#cam-status').textContent = left ? t('camStatus', { n: left, m: SHOTS }) : t('camDone');
@@ -2267,6 +2471,14 @@ body[data-screen="album"] .col { max-width: 920px; }
     renderCamera();
     $('#cam-shoot').focus();
     if ((S.cam.used[code] || 0) < SHOTS) startLive();
+  });
+  $('#film-chips').addEventListener('click', e => {
+    const b = e.target.closest('[data-film]');
+    if (!b) return;
+    S.cam.film = b.dataset.film;
+    renderCamera();
+    const again = $(`#film-chips [data-film="${S.cam.film}"]`);
+    if (again) again.focus();
   });
   $('#cam-switch').addEventListener('click', () => { stopLive(); S.cam.code = null; renderCamera(); $('#cam-code').focus(); });
   function addShot(code, url, when) {
