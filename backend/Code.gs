@@ -15,79 +15,68 @@ const ALBUM_COLS = ['fileId', 'ownerId', 'at', 'film', 'deleted'];
 const BALLOT_COLS = ['at', 'king1', 'king2', 'queen1', 'queen2'];
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-/* ---------------- menu & setup (run from the sheet) ---------------- */
-
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Prom Night')
-    .addItem('1. 初始化（第一次用）', 'setup')
-    .addItem('2. 设置后台密码', 'setPassword')
-    .addItem('3. 导入学校照片', 'importSchoolPhotos')
-    .addSeparator()
-    .addItem('补发外聘/校友会的码', 'addGuestCodes')
-    .addToUi();
+/* ---------------- setup (run from the script editor) ---------------- */
+/*
+ * Run setup() once. It creates (or reuses) the spreadsheet, the Drive folders and the People list.
+ * Script properties (Project Settings → Script properties):
+ *   ADMIN_PASSWORD           organizer password, set by hand, never in code
+ *   SCHOOL_PHOTO_FOLDER_ID   optional, the school's photo folder, then run importSchoolPhotos()
+ */
+function ss_() {
+  const props = PropertiesService.getScriptProperties();
+  let id = props.getProperty('SHEET_ID');
+  if (!id) {
+    const ss = SpreadsheetApp.create('高三舞会之夜 后台');
+    id = ss.getId();
+    props.setProperty('SHEET_ID', id);
+  }
+  return SpreadsheetApp.openById(id);
 }
+function say_(msg) { Logger.log(msg); return msg; }
 
 function setup() {
-  const ss = SpreadsheetApp.getActive();
-  const ui = SpreadsheetApp.getUi();
-  const src = ss.getSheets().find(s => s.getName() !== 'People' && headerIndex_(s, 'code') >= 0 && headerIndex_(s, 'name') >= 0);
+  const ss = ss_();
   let people = ss.getSheetByName('People');
   if (!people) {
-    if (!src) { ui.alert('先用“文件 → 导入”把 roster_with_codes.csv 导入成一个新工作表，再运行初始化。'); return; }
+    if (typeof ROSTER_DATA === 'undefined') return say_('没有找到名单（Roster.gs）。');
+    const data = [ROSTER_DATA.cols].concat(ROSTER_DATA.rows);
     people = ss.insertSheet('People');
-    const data = src.getDataRange().getValues();
     const head = data[0].map(String);
     const out = [PEOPLE_COLS];
     for (let r = 1; r < data.length; r++) {
       if (!data[r][head.indexOf('code')]) continue;
       out.push(PEOPLE_COLS.map(c => (head.indexOf(c) >= 0 ? data[r][head.indexOf(c)] : (c === 'shots' ? 0 : ''))));
     }
-    people.getRange(1, 1, out.length, PEOPLE_COLS.length).setValues(out);
     people.getRange('B:B').setNumberFormat('@');
+    people.getRange(1, 1, out.length, PEOPLE_COLS.length).setValues(out);
     people.setFrozenRows(1);
   }
   ensureSheet_('Ballots', BALLOT_COLS);
   ensureSheet_('Album', ALBUM_COLS);
   ensureSheet_('Log', ['at', 'who', 'action', 'detail']);
   const settings = ensureSheet_('Settings', ['key', 'value']);
-  const defaults = { voting: 'closed', headshots: 'open', developAt: DEFAULT_DEVELOP_AT, developed: 'auto', title: '高三舞会之夜', votingHint: '28/11 晚上 7:30 左右开放' };
+  const defaults = { voting: 'closed', headshots: 'open', developAt: DEFAULT_DEVELOP_AT, developed: 'auto', title: '高三舞会之夜' };
   const have = settings.getDataRange().getValues().map(r => r[0]);
   Object.keys(defaults).forEach(k => { if (have.indexOf(k) < 0) settings.appendRow([k, defaults[k]]); });
+  ss.getSheets().forEach(sh => { if (['People', 'Ballots', 'Album', 'Log', 'Settings'].indexOf(sh.getName()) < 0 && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh); });
 
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('ROOT_FOLDER_ID')) {
     const root = DriveApp.createFolder('Prom Night 2026');
-    props.setProperties({
-      ROOT_FOLDER_ID: root.getId(),
-      HEADSHOT_FOLDER_ID: root.createFolder('头像').getId(),
-      ALBUM_FOLDER_ID: root.createFolder('相册').getId(),
-    });
+    props.setProperties({ ROOT_FOLDER_ID: root.getId(), HEADSHOT_FOLDER_ID: root.createFolder('头像').getId(), ALBUM_FOLDER_ID: root.createFolder('相册').getId() });
+    DriveApp.getFileById(ss.getId()).moveTo(root);
   }
   clearCache_();
-  ui.alert('初始化完成。People 里有 ' + (people.getLastRow() - 1) + ' 个人。下一步：菜单 Prom Night → 设置后台密码。');
+  return say_('初始化完成：People 有 ' + (people.getLastRow() - 1) + ' 人。表格：' + ss.getUrl());
 }
 
-function setPassword() {
-  const ui = SpreadsheetApp.getUi();
-  const r = ui.prompt('设置后台密码', '组织者共用的密码，至少 8 个字符。不要发到群里。', ui.ButtonSet.OK_CANCEL);
-  if (r.getSelectedButton() !== ui.Button.OK) return;
-  const pw = r.getResponseText().trim();
-  if (pw.length < 8) { ui.alert('密码太短，至少 8 个字符。'); return; }
-  PropertiesService.getScriptProperties().setProperty('ADMIN_PASSWORD', pw);
-  ui.alert('密码已设置。');
-}
-
-/** Copies photos from the school folder into 头像 for people who haven't uploaded one. Matches file names to 中文名 or 英文名. */
+/** Copies photos from the school folder (Script property SCHOOL_PHOTO_FOLDER_ID) for students without their own photo. Matches file names to 中文名 or 英文名. */
 function importSchoolPhotos() {
-  const ui = SpreadsheetApp.getUi();
   const props = PropertiesService.getScriptProperties();
-  let folderId = props.getProperty('SCHOOL_PHOTO_FOLDER_ID');
-  const r = ui.prompt('导入学校照片', '粘贴学校照片文件夹的链接（这个账号要有查看权限）：', ui.ButtonSet.OK_CANCEL);
-  if (r.getSelectedButton() !== ui.Button.OK) return;
-  const m = r.getResponseText().match(/folders\/([A-Za-z0-9_-]+)/) || r.getResponseText().match(/^([A-Za-z0-9_-]{20,})$/);
-  if (m) { folderId = m[1]; props.setProperty('SCHOOL_PHOTO_FOLDER_ID', folderId); }
-  if (!folderId) { ui.alert('链接不对，要是 drive.google.com/drive/folders/... 这样的文件夹链接。'); return; }
-  const sh = SpreadsheetApp.getActive().getSheetByName('People');
+  const raw = props.getProperty('SCHOOL_PHOTO_FOLDER_ID') || '';
+  const m = raw.match(/folders\/([A-Za-z0-9_-]+)/) || raw.match(/^([A-Za-z0-9_-]{20,})$/);
+  if (!m) return say_('先在 Script properties 里填 SCHOOL_PHOTO_FOLDER_ID（文件夹链接或 ID）。');
+  const sh = ss_().getSheetByName('People');
   const rows = sh.getDataRange().getValues();
   const H = rows[0];
   const col = n => H.indexOf(n);
@@ -98,7 +87,7 @@ function importSchoolPhotos() {
     [rows[i][col('name')], rows[i][col('en')]].forEach(n => { if (n) index[norm(n)] = i; });
   }
   const headFolder = DriveApp.getFolderById(props.getProperty('HEADSHOT_FOLDER_ID'));
-  const files = DriveApp.getFolderById(folderId).getFiles();
+  const files = DriveApp.getFolderById(m[1]).getFiles();
   const unmatched = [];
   let done = 0, skipped = 0;
   while (files.hasNext()) {
@@ -115,20 +104,17 @@ function importSchoolPhotos() {
     const copy = f.makeCopy(rows[i][col('id')] + '_school', headFolder);
     copy.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     sh.getRange(i + 1, col('photoId') + 1, 1, 2).setValues([[copy.getId(), 'school']]);
+    rows[i][col('photoSource')] = 'school';
     done++;
   }
   clearCache_();
-  ui.alert('导入了 ' + done + ' 张。' + (skipped ? '跳过 ' + skipped + ' 张（本人已上传）。' : '') + (unmatched.length ? '\n对不上名字的文件：\n' + unmatched.join('\n') : ''));
+  return say_('导入了 ' + done + ' 张，跳过 ' + skipped + ' 张（本人已上传）。对不上名字的文件：' + (unmatched.join('、') || '无'));
 }
 
-function addGuestCodes() {
-  const ui = SpreadsheetApp.getUi();
-  const r = ui.prompt('补发外聘/校友会的码', '格式：单位名称,数量   例如：校友会,3', ui.ButtonSet.OK_CANCEL);
-  if (r.getSelectedButton() !== ui.Button.OK) return;
-  const parts = r.getResponseText().split(/[,，]/);
-  const unit = (parts[0] || '').trim(), n = parseInt(parts[1], 10);
-  if (!unit || !(n > 0 && n < 100)) { ui.alert('格式不对。例如：校友会,3'); return; }
-  const sh = SpreadsheetApp.getActive().getSheetByName('People');
+/** Adds extra guest codes. Edit the two values below, run once, then read the codes in the People sheet. */
+function addGuestCodes(unit, n) {
+  unit = unit || '校友会'; n = n || 1;
+  const sh = ss_().getSheetByName('People');
   const added = [];
   for (let k = 1; k <= n; k++) {
     const code = newCode_(sh);
@@ -137,7 +123,7 @@ function addGuestCodes() {
     added.push(unit + ' +' + k + '：' + code);
   }
   clearCache_();
-  ui.alert('新增的码：\n' + added.join('\n') + '\n\n可以在网站后台搜名字看二维码。');
+  return say_('新增：' + added.join('，'));
 }
 
 /* ---------------- web API ---------------- */
@@ -198,7 +184,7 @@ const ACTIONS = {
     return withLock_(() => {
       const fresh = person_(req.code);
       if (fresh.voted) throw new Error('already_voted');
-      SpreadsheetApp.getActive().getSheetByName('Ballots').appendRow([new Date(), king[0], king[1], queen[0], queen[1]]);
+      ss_().getSheetByName('Ballots').appendRow([new Date(), king[0], king[1], queen[0], queen[1]]);
       setPerson_(fresh.row, { voted: true, votedAt: new Date() });
       CacheService.getScriptCache().remove('turnout');
       return { voted: true, turnout: turnout_() };
@@ -215,7 +201,7 @@ const ACTIONS = {
       if (n >= SHOTS_PER_ROLL) throw new Error('roll_finished');
       const f = DriveApp.getFolderById(prop_('ALBUM_FOLDER_ID')).createFile(blob);
       f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      SpreadsheetApp.getActive().getSheetByName('Album').appendRow([f.getId(), fresh.id, new Date(req.at || Date.now()), String(req.film || ''), '']);
+      ss_().getSheetByName('Album').appendRow([f.getId(), fresh.id, new Date(req.at || Date.now()), String(req.film || ''), '']);
       setPerson_(fresh.row, { shots: n + 1 });
       return { shots: n + 1 };
     });
@@ -283,7 +269,7 @@ const ADMIN = {
   reissue: req => withLock_(() => {
     const p = peopleRows_().find(x => x.id === req.id);
     if (!p) throw new Error('not_found');
-    const sh = SpreadsheetApp.getActive().getSheetByName('People');
+    const sh = ss_().getSheetByName('People');
     const code = newCode_(sh);
     setPerson_(p.row, { code, updatedAt: new Date() });
     clearCache_();
@@ -308,7 +294,7 @@ const ADMIN = {
   resetTestData: req => {
     if (req.confirm !== 'RESET') throw new Error('confirm_needed');
     return withLock_(() => {
-      const ss = SpreadsheetApp.getActive();
+      const ss = ss_();
       ['Ballots', 'Album'].forEach(n => { const s = ss.getSheetByName(n); if (s.getLastRow() > 1) s.deleteRows(2, s.getLastRow() - 1); });
       const sh = ss.getSheetByName('People');
       const n = sh.getLastRow() - 1;
@@ -334,7 +320,7 @@ function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).se
 function prop_(k) { const v = PropertiesService.getScriptProperties().getProperty(k); if (!v) throw new Error('not_set_up'); return v; }
 function headerIndex_(sheet, name) { const r = sheet.getLastRow() ? sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0] : []; return r.map(String).indexOf(name); }
 function ensureSheet_(name, cols) {
-  const ss = SpreadsheetApp.getActive();
+  const ss = ss_();
   let s = ss.getSheetByName(name);
   if (!s) { s = ss.insertSheet(name); s.getRange(1, 1, 1, cols.length).setValues([cols]); s.setFrozenRows(1); }
   return s;
@@ -345,7 +331,7 @@ function withLock_(fn) {
   try { return fn(); } finally { lock.releaseLock(); }
 }
 function log_(who, action, detail) {
-  try { SpreadsheetApp.getActive().getSheetByName('Log').appendRow([new Date(), who, action, detail]); } catch (err) { /* logging must never break a request */ }
+  try { ss_().getSheetByName('Log').appendRow([new Date(), who, action, detail]); } catch (err) { /* logging must never break a request */ }
 }
 function trash_(id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (err) { /* already gone */ } }
 function photoUrl_(id, w) { return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w' + w; }
@@ -359,7 +345,7 @@ function imageBlob_(data, name) {
 }
 
 function peopleRows_() {
-  const sh = SpreadsheetApp.getActive().getSheetByName('People');
+  const sh = ss_().getSheetByName('People');
   const v = sh.getDataRange().getValues();
   const H = v[0];
   return v.slice(1).map((r, i) => { const o = { row: i + 2 }; H.forEach((h, j) => { o[h] = r[j]; }); o.code = String(o.code || '').toUpperCase(); return o; });
@@ -372,7 +358,7 @@ function person_(code) {
   return p;
 }
 function setPerson_(row, patch) {
-  const sh = SpreadsheetApp.getActive().getSheetByName('People');
+  const sh = ss_().getSheetByName('People');
   Object.keys(patch).forEach(k => {
     const c = PEOPLE_COLS.indexOf(k);
     if (c >= 0) sh.getRange(row, c + 1).setValue(patch[k]);
@@ -401,13 +387,13 @@ function rosterPublic_() {
 }
 function clearCache_() { CacheService.getScriptCache().remove('roster'); }
 function settings_() {
-  const v = SpreadsheetApp.getActive().getSheetByName('Settings').getDataRange().getValues();
+  const v = ss_().getSheetByName('Settings').getDataRange().getValues();
   const o = {};
   v.slice(1).forEach(r => { o[r[0]] = r[1] instanceof Date ? r[1].toISOString() : String(r[1]); });
   return o;
 }
 function writeSetting_(key, value) {
-  const sh = SpreadsheetApp.getActive().getSheetByName('Settings');
+  const sh = ss_().getSheetByName('Settings');
   const v = sh.getDataRange().getValues();
   for (let i = 1; i < v.length; i++) if (v[i][0] === key) { sh.getRange(i + 1, 2).setValue(value); return; }
   sh.appendRow([key, value]);
@@ -427,16 +413,16 @@ function turnout_() {
   return t;
 }
 function albumRows_() {
-  const v = SpreadsheetApp.getActive().getSheetByName('Album').getDataRange().getValues();
+  const v = ss_().getSheetByName('Album').getDataRange().getValues();
   return v.slice(1).map((r, i) => ({ row: i + 2, fileId: r[0], ownerId: r[1], at: r[2] instanceof Date ? r[2] : new Date(r[2]), film: r[3], deleted: !!r[4] }));
 }
 function markShotDeleted_(r, who) {
-  SpreadsheetApp.getActive().getSheetByName('Album').getRange(r.row, 5).setValue(new Date());
+  ss_().getSheetByName('Album').getRange(r.row, 5).setValue(new Date());
   trash_(r.fileId);
   log_(who, 'deleteShot', r.fileId);
 }
 function results_() {
-  const v = SpreadsheetApp.getActive().getSheetByName('Ballots').getDataRange().getValues().slice(1);
+  const v = ss_().getSheetByName('Ballots').getDataRange().getValues().slice(1);
   const t = { king: {}, queen: {} };
   v.forEach(r => {
     [r[1], r[2]].forEach(id => { if (id) t.king[id] = (t.king[id] || 0) + 1; });
