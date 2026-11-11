@@ -295,6 +295,13 @@ const ADMIN = {
     return { folder: m[1] };
   },
   stageSchool: () => stageSchoolPhotos_(70000),
+  /** Import code for the helper script in the school account. Created once, then reused. */
+  importKey: () => {
+    const props = PropertiesService.getScriptProperties();
+    let k = props.getProperty('SCHOOL_IMPORT_KEY');
+    if (!k) { k = Utilities.getUuid().replace(/-/g, '').slice(0, 20).toUpperCase(); props.setProperty('SCHOOL_IMPORT_KEY', k); }
+    return { key: k };
+  },
   schoolPhotos: () => ({ photos: schoolRows_().map(r => ({ id: r.fileId, class: r.class, file: r.name, personId: r.personId, skip: r.skip, thumb: photoUrl_(r.fileId, 500), big: photoUrl_(r.fileId, 1000) })) }),
   assignSchool: req => withLock_(() => {
     const rows = schoolRows_();
