@@ -14,13 +14,14 @@ const PEOPLE_COLS = ['id', 'code', 'name', 'en', 'class', 'no', 'role', 'list', 
 const ALBUM_COLS = ['fileId', 'ownerId', 'at', 'film', 'deleted'];
 const BALLOT_COLS = ['at', 'king1', 'king2', 'queen1', 'queen2'];
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const SCHOOL_COLS = ['sourceId', 'fileId', 'class', 'name', 'personId', 'skip'];
 
 /* ---------------- setup (run from the script editor) ---------------- */
 /*
  * Run setup() once. It creates (or reuses) the spreadsheet, the Drive folders and the People list.
  * Script properties (Project Settings → Script properties):
  *   ADMIN_PASSWORD           organizer password, set by hand, never in code
- *   SCHOOL_PHOTO_FOLDER_ID   optional, the school's photo folder, then run importSchoolPhotos()
+ *   SCHOOL_PHOTO_FOLDER_ID   set from the organizer desk; school photos are paired by hand there
  */
 function ss_() {
   const props = PropertiesService.getScriptProperties();
@@ -68,47 +69,6 @@ function setup() {
   }
   clearCache_();
   return say_('初始化完成：People 有 ' + (people.getLastRow() - 1) + ' 人。表格：' + ss.getUrl());
-}
-
-/** Copies photos from the school folder (Script property SCHOOL_PHOTO_FOLDER_ID) for students without their own photo. Matches file names to 中文名 or 英文名. */
-function importSchoolPhotos() {
-  const props = PropertiesService.getScriptProperties();
-  const raw = props.getProperty('SCHOOL_PHOTO_FOLDER_ID') || '';
-  const m = raw.match(/folders\/([A-Za-z0-9_-]+)/) || raw.match(/^([A-Za-z0-9_-]{20,})$/);
-  if (!m) return say_('先在 Script properties 里填 SCHOOL_PHOTO_FOLDER_ID（文件夹链接或 ID）。');
-  const sh = ss_().getSheetByName('People');
-  const rows = sh.getDataRange().getValues();
-  const H = rows[0];
-  const col = n => H.indexOf(n);
-  const norm = s => String(s || '').toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[\s_\-.()（）]+/g, '');
-  const index = {};
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][col('role')] !== 'student') continue;
-    [rows[i][col('name')], rows[i][col('en')]].forEach(n => { if (n) index[norm(n)] = i; });
-  }
-  const headFolder = DriveApp.getFolderById(props.getProperty('HEADSHOT_FOLDER_ID'));
-  const files = DriveApp.getFolderById(m[1]).getFiles();
-  const unmatched = [];
-  let done = 0, skipped = 0;
-  while (files.hasNext()) {
-    const f = files.next();
-    if (!/^image\//.test(f.getMimeType())) continue;
-    const key = norm(f.getName());
-    let i = index[key];
-    if (i === undefined) {
-      const hit = Object.keys(index).filter(k => key.indexOf(k) >= 0 && k.length >= 2).sort((a, b) => b.length - a.length)[0];
-      i = hit ? index[hit] : undefined;
-    }
-    if (i === undefined) { unmatched.push(f.getName()); continue; }
-    if (rows[i][col('photoSource')] === 'self') { skipped++; continue; }
-    const copy = f.makeCopy(rows[i][col('id')] + '_school', headFolder);
-    copy.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    sh.getRange(i + 1, col('photoId') + 1, 1, 2).setValues([[copy.getId(), 'school']]);
-    rows[i][col('photoSource')] = 'school';
-    done++;
-  }
-  clearCache_();
-  return say_('导入了 ' + done + ' 张，跳过 ' + skipped + ' 张（本人已上传）。对不上名字的文件：' + (unmatched.join('、') || '无'));
 }
 
 /** Adds extra guest codes. Edit the two values below, run once, then read the codes in the People sheet. */
@@ -166,7 +126,7 @@ const ACTIONS = {
       const folder = DriveApp.getFolderById(prop_('HEADSHOT_FOLDER_ID'));
       const f = folder.createFile(blob);
       f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      if (fresh.photoId) trash_(fresh.photoId);
+      if (fresh.photoId && fresh.photoSource === 'self') trash_(fresh.photoId);
       setPerson_(fresh.row, { photoId: f.getId(), photoSource: 'self', updatedAt: new Date() });
       clearCache_();
       log_(fresh.id, 'headshot', f.getId());
@@ -247,6 +207,8 @@ const ADMIN = {
       people: { total: all.length, students: students.length, voted: all.filter(p => p.voted).length },
       headshots: { self: students.filter(p => p.photoSource === 'self').length, school: students.filter(p => p.photoSource === 'school').length, none: students.filter(p => !p.photoId).length },
       album: { photos: albumRows_().filter(r => !r.deleted).length, cameras: all.filter(p => Number(p.shots) > 0).length },
+      school: { folder: PropertiesService.getScriptProperties().getProperty('SCHOOL_PHOTO_FOLDER_ID') || '', staged: schoolRows_().length },
+      sources: students.reduce((o, p) => { o[p.id] = p.photoSource || ''; return o; }, {}),
       results: results_(),
       roster: rosterPublic_(),
     };
@@ -279,8 +241,11 @@ const ADMIN = {
   deleteHeadshot: req => withLock_(() => {
     const p = peopleRows_().find(x => x.id === req.id);
     if (!p) throw new Error('not_found');
-    if (p.photoId) trash_(p.photoId);
-    setPerson_(p.row, { photoId: '', photoSource: '', updatedAt: new Date() });
+    if (p.photoId && p.photoSource === 'self') trash_(p.photoId);
+    const school = schoolRows_().find(r => r.personId === p.id && !r.skip);
+    if (p.photoSource === 'school' && school && school.fileId === p.photoId) unassignSchool_(school);
+    const fallback = schoolRows_().find(r => r.personId === p.id && !r.skip);
+    setPerson_(p.row, fallback ? { photoId: fallback.fileId, photoSource: 'school', updatedAt: new Date() } : { photoId: '', photoSource: '', updatedAt: new Date() });
     clearCache_();
     log_('admin', 'deleteHeadshot', p.id);
     return { deleted: true };
@@ -290,6 +255,33 @@ const ADMIN = {
     if (!r) throw new Error('not_found');
     markShotDeleted_(r, 'admin');
     return { deleted: true };
+  }),
+  setSchoolFolder: req => {
+    const raw = String(req.url || '').trim();
+    const m = raw.match(/folders\/([A-Za-z0-9_-]+)/) || raw.match(/^([A-Za-z0-9_-]{20,})$/);
+    if (!m) throw new Error('bad_folder_link');
+    try { DriveApp.getFolderById(m[1]).getName(); } catch (e) { throw new Error('no_folder_access'); }
+    PropertiesService.getScriptProperties().setProperty('SCHOOL_PHOTO_FOLDER_ID', m[1]);
+    return { folder: m[1] };
+  },
+  stageSchool: () => stageSchoolPhotos_(70000),
+  schoolPhotos: () => ({ photos: schoolRows_().map(r => ({ id: r.fileId, class: r.class, file: r.name, personId: r.personId, skip: r.skip, thumb: photoUrl_(r.fileId, 500), big: photoUrl_(r.fileId, 1000) })) }),
+  assignSchool: req => withLock_(() => {
+    const rows = schoolRows_();
+    const row = rows.find(r => r.fileId === req.fileId);
+    if (!row) throw new Error('not_found');
+    if (row.personId) unassignSchool_(row);
+    if (req.skip) { schoolSheet_().getRange(row.row, 6).setValue('yes'); clearCache_(); return { ok: true }; }
+    schoolSheet_().getRange(row.row, 6).setValue('');
+    if (!req.personId) { clearCache_(); return { ok: true }; }
+    const p = peopleRows_().find(x => x.id === req.personId && x.role === 'student');
+    if (!p) throw new Error('not_found');
+    schoolRows_().filter(r => r.personId === p.id).forEach(r => unassignSchool_(r));
+    schoolSheet_().getRange(row.row, 5).setValue(p.id);
+    if (p.photoSource !== 'self') setPerson_(p.row, { photoId: row.fileId, photoSource: 'school', updatedAt: new Date() });
+    clearCache_();
+    log_('admin', 'assignSchool', row.fileId + '→' + p.id);
+    return { ok: true };
   }),
   resetTestData: req => {
     if (req.confirm !== 'RESET') throw new Error('confirm_needed');
@@ -430,6 +422,52 @@ function results_() {
   });
   return { ballots: v.length, king: t.king, queen: t.queen };
 }
+function schoolSheet_() { return ensureSheet_('SchoolPhotos', SCHOOL_COLS); }
+function schoolRows_() {
+  const v = schoolSheet_().getDataRange().getValues();
+  return v.slice(1).map((r, i) => ({ row: i + 2, sourceId: r[0], fileId: r[1], class: r[2], name: r[3], personId: r[4], skip: !!r[5] }));
+}
+/** Clears one pairing; if that person was showing this school photo, they go back to no photo. */
+function unassignSchool_(row) {
+  if (!row.personId) return;
+  const p = peopleRows_().find(x => x.id === row.personId);
+  if (p && p.photoSource === 'school' && p.photoId === row.fileId) setPerson_(p.row, { photoId: '', photoSource: '', updatedAt: new Date() });
+  schoolSheet_().getRange(row.row, 5).setValue('');
+}
+/** Copies school photos (class subfolders) into 学校照片 so the website can show them. Resumable: call again until remaining is false. */
+function stageSchoolPhotos_(budgetMs) {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SCHOOL_PHOTO_FOLDER_ID');
+  if (!id) throw new Error('no_school_folder');
+  let root;
+  try { root = DriveApp.getFolderById(id); root.getName(); } catch (e) { throw new Error('no_folder_access'); }
+  let target = props.getProperty('SCHOOL_COPY_FOLDER_ID');
+  if (!target) { target = DriveApp.getFolderById(prop_('ROOT_FOLDER_ID')).createFolder('学校照片').getId(); props.setProperty('SCHOOL_COPY_FOLDER_ID', target); }
+  const dest = DriveApp.getFolderById(target);
+  const sh = schoolSheet_();
+  const have = {};
+  schoolRows_().forEach(r => { have[r.sourceId] = true; });
+  const start = Date.now();
+  let added = 0, remaining = false;
+  const walk = (folder, cls) => {
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const f = files.next();
+      if (!/^image\//.test(f.getMimeType()) || have[f.getId()]) continue;
+      if (Date.now() - start > budgetMs) { remaining = true; return; }
+      const c = f.makeCopy(cls + '_' + f.getName(), dest);
+      c.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      sh.appendRow([f.getId(), c.getId(), cls, f.getName(), '', '']);
+      have[f.getId()] = true;
+      added++;
+    }
+    const subs = folder.getFolders();
+    while (subs.hasNext() && !remaining) { const sub = subs.next(); walk(sub, sub.getName()); }
+  };
+  walk(root, root.getName());
+  return { added, remaining, staged: Object.keys(have).length };
+}
+
 function checkPassword_(pw) {
   const cache = CacheService.getScriptCache();
   const fails = Number(cache.get('pwfails') || 0);
