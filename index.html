@@ -1026,7 +1026,7 @@ function makeFilmGL(canvas, preserve) {
       schoolStage: '导入照片', schoolStaging: '正在导入，已导入 {n} 张…（不要关掉这一页）', schoolStaged: '已导入 {n} 张照片。', schoolLoad: '开始配对', schoolMore: '导入新加的照片',
       schoolProgress: '{cls}：{done} / {total} 人有照片（本人上传 {self}，学校照片 {paired}）', unpaired: '未配对', unused: '不用', pairTitle: '这张是谁？', pairHint: '只显示 {cls} 的同学。本人上传过照片的，会继续用自己的照片。',
       showKey: '显示学校账号导入码', copy: '复制', copied: '已复制',
-      skipPhoto: '这张不用', unpair: '取消配对', stHere: '就是这张', stOther: '已配对别的照片', stSelf: '本人已上传',
+      skipPhoto: '这张不用', unskip: '恢复使用', skippedNote: '这张已标为不用。点“恢复使用”撤回，或直接选一个同学。', unpair: '取消配对', stHere: '就是这张', stOther: '已配对别的照片', stSelf: '本人已上传',
       err_no_folder_access: 'mxuenwe@gmail.com 还没有这个文件夹的查看权限。请毕业特刊负责人把文件夹共享给这个账号。', err_bad_folder_link: '这不是文件夹链接。要是 drive.google.com/drive/folders/... 这样的。', err_no_school_folder: '还没连接文件夹。',
       offline: '网络断开了，恢复后会自动重试。', codeShort: '个人码是 8 位，例如 K7MQ-4PXA。', notMeSure: '再点一次确认退出',
     },
@@ -1089,7 +1089,7 @@ function makeFilmGL(canvas, preserve) {
       schoolStage: 'Import photos', schoolStaging: 'Importing… {n} photos so far. Keep this page open.', schoolStaged: '{n} photos imported.', schoolLoad: 'Start pairing', schoolMore: 'Import newly added photos',
       schoolProgress: '{cls}: {done} of {total} have a photo ({self} own, {paired} school)', unpaired: 'Not paired', unused: 'Not used', pairTitle: 'Who is this?', pairHint: 'Only {cls} is listed. Anyone who uploaded their own photo keeps it.',
       showKey: 'Show import code for the school account', copy: 'Copy', copied: 'Copied',
-      skipPhoto: 'Don’t use this one', unpair: 'Unpair', stHere: 'This photo', stOther: 'Paired with another photo', stSelf: 'Uploaded their own',
+      skipPhoto: 'Don’t use this one', unskip: 'Use it again', skippedNote: 'Marked as not used. Tap “Use it again” to undo, or just pick a student.', unpair: 'Unpair', stHere: 'This photo', stOther: 'Paired with another photo', stSelf: 'Uploaded their own',
       err_no_folder_access: 'mxuenwe@gmail.com can’t open that folder yet. Ask the yearbook team to share it with that account.', err_bad_folder_link: 'That isn’t a folder link. It should look like drive.google.com/drive/folders/…', err_no_school_folder: 'No folder connected yet.',
       offline: 'You’re offline. We’ll retry when the connection is back.', codeShort: 'Personal codes have 8 characters, like K7MQ-4PXA.', notMeSure: 'Tap again to sign out',
     },
@@ -1938,8 +1938,8 @@ function makeFilmGL(canvas, preserve) {
       return `<button type="button" class="pk-row" data-assign="${esc(p.id)}" data-file="${esc(r.id)}" style="color:var(--ink);border-bottom-color:var(--ink-line)">${avatar(p)}<span class="pk-text"><span class="pk-name">${esc(p.name)}</span>${p.en ? `<span class="pk-en" style="color:var(--ink-muted)">${esc(p.en)}</span>` : ''}</span>${st ? `<span class="pk-tag" style="color:var(--wax)">${esc(st)}</span>` : ''}</button>`;
     }).join('');
     openSheet(`<h2 class="sheet-title" id="sheet-title">${esc(t('pairTitle'))}</h2><img src="${esc(r.big)}" alt="" referrerpolicy="no-referrer" style="display:block;max-height:46vh;max-width:100%;margin:0 auto;border:5px solid var(--print);box-shadow:0 10px 24px var(--shadow)">`
-      + `<p class="sheet-note">${esc(t('pairHint', { cls: r.class }))}</p><div>${items}</div>`
-      + `<div class="sheet-actions"><button type="button" class="btn btn-ghost" data-skip="${esc(r.id)}">${esc(t('skipPhoto'))}</button>${r.personId ? `<button type="button" class="btn btn-ghost" data-unpair="${esc(r.id)}">${esc(t('unpair'))}</button>` : `<button type="button" class="btn btn-ghost" id="qr-close">${esc(t('close'))}</button>`}</div>`);
+      + `<p class="sheet-note">${r.skip ? esc(t('skippedNote')) + ' ' : ''}${esc(t('pairHint', { cls: r.class }))}</p><div>${items}</div>`
+      + `<div class="sheet-actions">${r.skip ? `<button type="button" class="btn btn-ghost" data-unpair="${esc(r.id)}">${esc(t('unskip'))}</button>` : `<button type="button" class="btn btn-ghost" data-skip="${esc(r.id)}">${esc(t('skipPhoto'))}</button>`}${r.personId ? `<button type="button" class="btn btn-ghost" data-unpair="${esc(r.id)}">${esc(t('unpair'))}</button>` : `<button type="button" class="btn btn-ghost" id="qr-close">${esc(t('close'))}</button>`}</div>`);
   }
   async function pairOp(extra) {
     closeSheet();
