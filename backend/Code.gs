@@ -71,6 +71,26 @@ function setup() {
   return say_('初始化完成：People 有 ' + (people.getLastRow() - 1) + ' 人。表格：' + ss.getUrl());
 }
 
+/** Adds people from ROSTER_DATA who are not in the People sheet yet (by id). Never changes existing rows. */
+function syncRoster() {
+  if (typeof ROSTER_DATA === 'undefined') return say_('没有找到名单。');
+  const sh = ss_().getSheetByName('People');
+  const have = {};
+  sh.getRange(2, 1, Math.max(1, sh.getLastRow() - 1), 2).getValues().forEach(r => { have[String(r[0])] = true; have[String(r[1]).toUpperCase()] = true; });
+  const head = ROSTER_DATA.cols;
+  const added = [];
+  ROSTER_DATA.rows.forEach(row => {
+    const o = {}; head.forEach((c, i) => { o[c] = row[i]; });
+    if (!o.code || have[String(o.id)] || have[String(o.code).toUpperCase()]) return;
+    sh.appendRow(PEOPLE_COLS.map(c => (c in o ? o[c] : (c === 'shots' ? 0 : ''))));
+    have[String(o.id)] = true;
+    added.push(o.name);
+  });
+  sh.getRange('B:B').setNumberFormat('@');
+  clearCache_();
+  return say_('新增 ' + added.length + ' 人：' + added.join('，') + '。People 现在有 ' + (sh.getLastRow() - 1) + ' 人。');
+}
+
 /** Adds extra guest codes. Edit the two values below, run once, then read the codes in the People sheet. */
 function addGuestCodes(unit, n) {
   unit = unit || '校友会'; n = n || 1;
