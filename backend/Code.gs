@@ -115,6 +115,36 @@ const ACTIONS = {
 
   roster: req => { person_(req.code); return { roster: rosterPublic_() }; },
 
+  /** Used by the helper script in the school account: which school photos are already here. */
+  schoolKnown: req => { checkImportKey_(req.key); return { ids: schoolRows_().map(r => String(r.sourceId)) }; },
+
+  /** Used by the helper script in the school account: receives a few resized school photos. */
+  schoolImport: req => {
+    checkImportKey_(req.key);
+    const items = (req.items || []).slice(0, 6);
+    const blobs = items.map(it => ({ it, blob: imageBlob_(it.data, String(it.class || '') + '_' + String(it.file || 'photo.jpg')) }));
+    return withLock_(() => {
+      const props = PropertiesService.getScriptProperties();
+      let target = props.getProperty('SCHOOL_COPY_FOLDER_ID');
+      if (!target) { target = DriveApp.getFolderById(prop_('ROOT_FOLDER_ID')).createFolder('学校照片').getId(); props.setProperty('SCHOOL_COPY_FOLDER_ID', target); }
+      const dest = DriveApp.getFolderById(target);
+      const sh = schoolSheet_();
+      const have = {};
+      schoolRows_().forEach(r => { have[String(r.sourceId)] = true; });
+      let added = 0;
+      blobs.forEach(({ it, blob }) => {
+        const src = String(it.sourceId || '');
+        if (!src || have[src]) return;
+        const f = dest.createFile(blob);
+        f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        sh.appendRow([src, f.getId(), String(it.class || ''), String(it.file || ''), '', '']);
+        have[src] = true;
+        added++;
+      });
+      return { added, staged: Object.keys(have).length };
+    });
+  },
+
   headshot: req => {
     const p = person_(req.code);
     if (p.role !== 'student') throw new Error('not_student');
@@ -466,6 +496,16 @@ function stageSchoolPhotos_(budgetMs) {
   };
   walk(root, root.getName());
   return { added, remaining, staged: Object.keys(have).length };
+}
+
+/** The helper script in the school account sends this key (script property SCHOOL_IMPORT_KEY). */
+function checkImportKey_(key) {
+  const cache = CacheService.getScriptCache();
+  const fails = Number(cache.get('keyfails') || 0);
+  if (fails >= 10) throw new Error('too_many_tries');
+  const real = PropertiesService.getScriptProperties().getProperty('SCHOOL_IMPORT_KEY');
+  if (!real) throw new Error('import_off');
+  if (String(key || '') !== real) { cache.put('keyfails', String(fails + 1), 600); throw new Error('bad_key'); }
 }
 
 function checkPassword_(pw) {
