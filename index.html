@@ -619,6 +619,31 @@ body[data-screen="album"] .col { max-width: 920px; }
 #site-title { font-size: 14px; letter-spacing: .04em; line-height: 1.25; }
 #site-title > span { display: block; white-space: nowrap; }
 
+/* ---------- photo-grid voting ---------- */
+.vg { display: grid; gap: 14px; }
+.vg-steps { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--sky-line); border-radius: 999px; background: var(--glass); }
+.vg-step { flex: 1; min-height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--sky-muted); font-size: 16px; font-weight: 600; }
+.vg-step[aria-selected="true"] { background: var(--parch); color: var(--ink); }
+.vg-n { margin-left: 6px; font-family: var(--font-mono); font-size: 13px; opacity: .8; }
+.vg-hint { color: var(--sky-muted); }
+.vg-find { position: relative; }
+.vg-find svg { position: absolute; left: 13px; top: 14px; width: 20px; height: 20px; color: var(--sky-muted); pointer-events: none; }
+.vg-chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: -16px; padding: 0 16px 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.vg-chips::-webkit-scrollbar { display: none; }
+.vg-chips .film-chip { flex: none; min-height: 38px; font-size: 15px; }
+.vg .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 10px; padding-bottom: 130px; }
+@media (min-width: 620px) { .vg .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 18px; } }
+.vg .port { gap: 6px; }
+.vg .port-frame { padding: 3px; }
+.vg .port-seal { top: -7px; right: -7px; width: 28px; height: 28px; }
+.vg .port-name { font-size: 15.5px; }
+.port-en { margin-top: -3px; color: var(--sky-muted); font-size: 11.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.vg .port-class { font-size: 11px; }
+.vg .port-photo .initials { font-size: clamp(18px, 6vw, 30px); }
+.vg-fair { font-size: 14px; text-align: center; }
+.actionbar .btn { flex: none; padding-inline: 18px; }
+.pick-count, .pick-label { white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -765,6 +790,16 @@ body[data-screen="album"] .col { max-width: 920px; }
     <input class="find-input" id="picker-q" type="search" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <div class="picker-list" id="picker-list"></div>
+</div>
+
+<div class="actionbar" id="actionbar" hidden>
+  <div class="actionbar-inner">
+    <div class="pick">
+      <span class="pick-thumbs" id="pick-thumbs"></span>
+      <span class="pick-text"><span class="pick-label" id="pick-label"></span><span class="pick-count" id="pick-count"></span></span>
+    </div>
+    <button type="button" class="btn btn-wax" id="vote-next" disabled></button>
+  </div>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -968,6 +1003,7 @@ function makeFilmGL(canvas, preserve) {
   const CATS = ['king', 'queen'];
   const CAT_LABEL = { king: 'Prom King', queen: 'Prom Queen' };
   const CLASS_ORDER = ['高三理忠', '高三理孝', '高三文商忠', '高三文商孝', '高三文商仁', '高三文艺'];
+  const CHECK = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
   const ARROW = '<svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
   const CROWN = '<svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M8 38L4 12l14 11L32 4l14 19 14-11-4 26z"/><path d="M9 44h46"/><circle cx="4" cy="12" r="2.4" fill="currentColor" stroke="none"/><circle cx="32" cy="4" r="2.4" fill="currentColor" stroke="none"/><circle cx="60" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>';
   const CROWN_MINI = CROWN.replace('<svg ', '<svg class="crown-mini" ');
@@ -993,7 +1029,8 @@ function makeFilmGL(canvas, preserve) {
       notOpenT: '投票还没开始', notOpenB: '预计 28/11 晚上 7:30 左右开放。开放后这一页会自动更新。', checkNow: '现在检查',
       votedT: '你已经投过票了', votedB: '谢谢！Prom King 和 Prom Queen 今晚揭晓。',
       doneT: '投票已结束', doneB: '揭晓马上开始，请看大屏幕。',
-      pickKing: '从男生名单选两位', pickQueen: '从女生名单选两位', voteN: '第 {n} 票', tapToPick: '点这里选人', change: '更换',
+      pickKing: '从男生名单选两位',
+      allClasses: '全部', chosenOf: '已选 {n}/{m}', maxTwo: '每个类别只能选 2 位。先点一位已选的同学取消。', voteNext: '下一步', kingFirst: '先选好两位 Prom King。', nPeople: '{n} 人', fairNote: '每个人看到的名单顺序都是随机打乱的，没有人会一直排在最前面。', pickQueen: '从女生名单选两位', voteN: '第 {n} 票', tapToPick: '点这里选人', change: '更换',
       left: '还差 {n} 票', allSet: '四票都选好了', review: '检查选票',
       pickerTitle: '{cat} · 第 {n} 票', searchName: '搜中文名或英文名', alreadyPicked: '已选', noMatch: '没有找到“{q}”。',
       sealTitle: '确认你的选票', sheetNote: '提交以后就不能修改了。', back: '返回修改', submit: '确认投票', submitting: '正在提交…', votedToast: '投票成功！',
@@ -1056,7 +1093,8 @@ function makeFilmGL(canvas, preserve) {
       notOpenT: 'Voting hasn’t started', notOpenB: 'It should open around 7:30 pm on 28/11. This page updates by itself when it does.', checkNow: 'Check now',
       votedT: 'You’ve voted', votedB: 'Thank you! The Prom King and Prom Queen are crowned tonight.',
       doneT: 'Voting has closed', doneB: 'The reveal is about to start. Watch the big screen.',
-      pickKing: 'Pick two from the boys’ list', pickQueen: 'Pick two from the girls’ list', voteN: 'Vote {n}', tapToPick: 'Tap to choose', change: 'Change',
+      pickKing: 'Pick two from the boys’ list',
+      allClasses: 'All', chosenOf: '{n}/{m} chosen', maxTwo: 'You can choose 2 per category. Tap someone you chose to remove them first.', voteNext: 'Next', kingFirst: 'Choose your two Prom Kings first.', nPeople: '{n} people', fairNote: 'Everyone sees the list in a different random order, so no one is always at the top.', pickQueen: 'Pick two from the girls’ list', voteN: 'Vote {n}', tapToPick: 'Tap to choose', change: 'Change',
       left: '{n} more to choose', allSet: 'All four chosen', review: 'Review ballot',
       pickerTitle: '{cat} · vote {n}', searchName: 'Search Chinese or English name', alreadyPicked: 'Picked', noMatch: 'No one matches “{q}”.',
       sealTitle: 'Check your ballot', sheetNote: 'You can’t change your vote after you submit it.', back: 'Change', submit: 'Cast my vote', submitting: 'Submitting…', votedToast: 'Vote cast!',
@@ -1105,7 +1143,7 @@ function makeFilmGL(canvas, preserve) {
   /* ---------- state ---------- */
   const S = {
     lang: 'zh', screen: 'welcome', code: '', me: null, settings: {}, roster: [], turnout: null,
-    ballot: { king: [null, null], queen: [null, null] }, picker: null, busy: false,
+    ballot: { king: [null, null], queen: [null, null] }, picker: null, busy: false, vstep: 0, vq: '', vcls: '', vorder: null,
     album: null, lb: -1, lbArmed: false, armed: null,
     cam: { film: 'warm', busy: false, fresh: -1 }, queue: [],
     adm: null, pw: '', showResults: false, findQ: '', found: [], sound: true,
@@ -1238,6 +1276,7 @@ function makeFilmGL(canvas, preserve) {
     $('#band').hidden = name !== 'welcome';
     const tabbed = !!S.me && ['me', 'vote', 'camera', 'album'].includes(name);
     $('#tabs').hidden = !tabbed;
+    if (name !== 'vote') $('#actionbar').hidden = true;
     $('#album-back').hidden = $('#album-back-top').hidden = tabbed;
     $$('#tabs button').forEach(b => { if (b.dataset.tab === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     if (!$('#lightbox').hidden) closeLightbox(false);
@@ -1428,35 +1467,115 @@ function makeFilmGL(canvas, preserve) {
   $('#sheet-backdrop').addEventListener('click', closeSheet);
 
   /* ---------- vote ---------- */
+  /* fair order: each voter gets their own shuffled list (stable for that voter), so no one is always first */
+  function seeded(str) {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+    return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+  }
+  function fairOrder(cat) {
+    if (!S.vorder || S.vorder.who !== S.me.id) S.vorder = { who: S.me.id };
+    if (!S.vorder[cat]) {
+      const rnd = seeded(S.me.id + ':' + cat);
+      const ids = S.roster.filter(p => p.list === cat).map(p => p.id);
+      for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+      S.vorder[cat] = ids;
+    }
+    return S.vorder[cat];
+  }
+  const picksOf = cat => S.ballot[cat].filter(Boolean);
+  const portPhoto = p => p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="initials">${esc(initials(p))}</span>`;
+
   function renderVote() {
     if (S.screen !== 'vote' || !S.me) return;
     const v = S.settings.voting;
-    $('#vote-sub').textContent = v === 'open' && !S.me.voted ? t('voteSub') : '';
+    const open = v === 'open' && !S.me.voted;
+    $('#vote-sub').textContent = open ? t('voteSub') : '';
     const turn = S.turnout ? `<p class="screen-hint">${esc(t('turnout', { n: S.turnout.voted }))}</p>` : '';
+    $('#actionbar').hidden = !open;
+    if (open) {
+      if (!$('#vg')) {
+        $('#vote-body').innerHTML = `<div class="vg" id="vg">`
+          + `<div class="vg-steps" role="tablist">${CATS.map((c, i) => `<button type="button" class="vg-step" role="tab" data-step="${i}">${CAT_LABEL[c]}<span class="vg-n"></span></button>`).join('')}</div>`
+          + `<p class="vg-hint" id="vg-hint"></p>`
+          + `<div class="vg-find"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`
+          + `<label class="vh" for="vg-q">${esc(t('searchName'))}</label><input class="find-input" id="vg-q" type="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${esc(t('searchName'))}"><span class="find-count" id="vg-count"></span></div>`
+          + `<div class="film-chips vg-chips" id="vg-chips" role="radiogroup"></div>`
+          + `<p class="find-empty" id="vg-empty" hidden></p><div class="grid" id="vg-grid"></div>`
+          + `<p class="screen-hint vg-fair">${esc(t('fairNote'))}</p>${turn}</div>`;
+        $('#vg-q').value = S.vq;
+      }
+      renderVoteGrid();
+      return;
+    }
     let html;
     if (S.me.voted) html = `<div class="card-n"><h2>${esc(t('votedT'))}</h2><p>${esc(t('votedB'))}</p></div>${turn}`;
     else if (v === 'done') html = `<div class="card-n"><h2>${esc(t('doneT'))}</h2><p>${esc(t('doneB'))}</p></div>${turn}`;
-    else if (v !== 'open') html = `<div class="card-n"><h2>${esc(t('notOpenT'))}</h2><p>${esc(t('notOpenB'))}</p><button type="button" class="btn btn-ghost" id="vote-check">${esc(t('checkNow'))}</button></div>`;
-    else {
-      html = CATS.map(cat => `<section class="parch pick-card" aria-labelledby="pc-${cat}"><div class="nom-head"><h2 class="nom-cat" id="pc-${cat}">${CAT_LABEL[cat]}</h2><p class="nom-list">${esc(t(cat === 'king' ? 'pickKing' : 'pickQueen'))}</p></div>`
-        + [0, 1].map(i => {
-          const p = byId(S.ballot[cat][i]);
-          return p
-            ? `<button type="button" class="pick-slot filled" data-cat="${cat}" data-i="${i}">${avatar(p)}<span class="ps-text"><span class="ps-name">${esc(p.name)}</span><span class="ps-sub">${esc([p.en, p.class].filter(Boolean).join(' · '))}</span></span><span class="ps-act">${esc(t('change'))}</span></button>`
-            : `<button type="button" class="pick-slot" data-cat="${cat}" data-i="${i}"><span class="ps-text"><span class="ps-sub">${esc(t('voteN', { n: i + 1 }))}</span><span>${esc(t('tapToPick'))}</span></span>${ARROW}</button>`;
-        }).join('') + '</section>').join('');
-      const left = CATS.reduce((n, c) => n + S.ballot[c].filter(x => !x).length, 0);
-      html += `<div class="nom-foot"><p class="nom-progress">${esc(left ? t('left', { n: left }) : t('allSet'))}</p><button type="button" class="btn btn-wax btn-block" id="vote-review" ${left ? 'disabled' : ''}>${esc(t('review'))}${ARROW}</button>${turn}</div>`;
-    }
+    else html = `<div class="card-n"><h2>${esc(t('notOpenT'))}</h2><p>${esc(t('notOpenB'))}</p><button type="button" class="btn btn-ghost" id="vote-check">${esc(t('checkNow'))}</button></div>`;
     $('#vote-body').innerHTML = html;
   }
+  function renderVoteGrid() {
+    const cat = CATS[S.vstep], picks = picksOf(cat);
+    $$('#vg .vg-step').forEach((b, i) => { b.setAttribute('aria-selected', String(i === S.vstep)); b.querySelector('.vg-n').textContent = `${picksOf(CATS[i]).length}/2`; });
+    $('#vg-hint').textContent = t(cat === 'king' ? 'pickKing' : 'pickQueen');
+    const all = fairOrder(cat).map(byId).filter(Boolean);
+    const classes = CLASS_ORDER.filter(c => all.some(p => p.class === c)).concat([...new Set(all.map(p => p.class))].filter(c => !CLASS_ORDER.includes(c)));
+    if (S.vcls && !classes.includes(S.vcls)) S.vcls = '';
+    $('#vg-chips').innerHTML = [''].concat(classes).map(c => `<button type="button" class="film-chip" role="radio" aria-checked="${c === S.vcls}" data-vcls="${esc(c)}">${esc(c ? c.replace(/^高三/, '') : t('allClasses'))}</button>`).join('');
+    const toks = fold(S.vq).trim().split(' ').filter(Boolean);
+    const list = all.filter(p => (!S.vcls || p.class === S.vcls) && (!toks.length || toks.every(k => fold(p.name + ' ' + p.en + ' ' + p.class).includes(k))));
+    $('#vg-grid').innerHTML = list.map(p => {
+      const on = picks.includes(p.id);
+      return `<button type="button" class="port" data-vid="${esc(p.id)}" aria-pressed="${on}"><span class="port-frame"><span class="port-photo">${portPhoto(p)}</span><span class="port-seal">${CHECK}</span></span>`
+        + `<span class="port-name">${esc(p.name)}</span>${p.en ? `<span class="port-en">${esc(p.en)}</span>` : ''}<span class="port-class">${esc(p.class)}</span></button>`;
+    }).join('');
+    $('#vg-grid').classList.toggle('full', picks.length >= 2);
+    $('#vg-count').textContent = t('nPeople', { n: list.length });
+    const empty = $('#vg-empty');
+    empty.hidden = list.length > 0;
+    empty.textContent = list.length ? '' : t('noMatch', { q: S.vq.trim() });
+    renderVoteBar();
+  }
+  function renderVoteBar() {
+    const cat = CATS[S.vstep], picks = picksOf(cat);
+    $('#pick-thumbs').innerHTML = [0, 1].map(i => picks[i] ? `<span class="pt on">${portPhoto(byId(picks[i]))}</span>` : '<span class="pt"></span>').join('');
+    $('#pick-label').textContent = CAT_LABEL[cat];
+    $('#pick-count').textContent = t('chosenOf', { n: picks.length, m: 2 });
+    const btn = $('#vote-next');
+    btn.innerHTML = esc(S.vstep === 0 ? t('voteNext') : t('review')) + ARROW;
+    btn.disabled = picks.length < 2;
+  }
+  function voteStep(i) {
+    S.vstep = i; S.vq = ''; S.vcls = '';
+    if ($('#vg-q')) $('#vg-q').value = '';
+    renderVoteGrid();
+    $('#vg').scrollIntoView({ block: 'start' });
+  }
   $('#vote-body').addEventListener('click', e => {
-    const slot = e.target.closest('.pick-slot');
-    if (slot) { openPicker(slot.dataset.cat, Number(slot.dataset.i)); return; }
     const b = e.target.closest('button');
     if (!b) return;
-    if (b.id === 'vote-check') { b.disabled = true; refresh(); }
-    if (b.id === 'vote-review') reviewBallot();
+    if (b.id === 'vote-check') { b.disabled = true; refresh(); return; }
+    if (b.dataset.step) { voteStep(Number(b.dataset.step)); return; }
+    if (b.dataset.vcls !== undefined) { S.vcls = b.dataset.vcls; renderVoteGrid(); return; }
+    if (b.dataset.vid) {
+      const cat = CATS[S.vstep], id = b.dataset.vid;
+      let picks = picksOf(cat);
+      if (picks.includes(id)) picks = picks.filter(x => x !== id);
+      else if (picks.length >= 2) { toast(t('maxTwo')); return; }
+      else picks.push(id);
+      S.ballot[cat] = [picks[0] || null, picks[1] || null];
+      renderVoteGrid();
+    }
+  });
+  $('#vote-body').addEventListener('input', e => {
+    if (e.target.id !== 'vg-q') return;
+    S.vq = e.target.value;
+    renderVoteGrid();
+  });
+  $('#vote-next').addEventListener('click', () => {
+    if (S.vstep === 0) { voteStep(1); return; }
+    if (picksOf('king').length < 2) { toast(t('kingFirst')); voteStep(0); return; }
+    reviewBallot();
   });
 
   function openPicker(cat, i) {
