@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0C0F22">
-<title>高三舞会之夜</title>
+<title>《光序•耀光》谢师宴暨高三毕业舞会</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -614,6 +614,11 @@ body[data-screen="album"] .col { max-width: 920px; }
 #sheet-panel .pk-row { background: none; }
 @media (hover: hover) { #sheet-panel .pk-row:hover { background: var(--gold-haze); } }
 
+/* long event name in the header: allow it to shrink and wrap instead of pushing the language toggle off-screen */
+.wordmark { min-width: 0; white-space: normal; }
+#site-title { font-size: 14px; letter-spacing: .04em; line-height: 1.25; }
+#site-title > span { display: block; white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -623,7 +628,7 @@ body[data-screen="album"] .col { max-width: 920px; }
 <div class="offline" id="offline" hidden></div>
 <div class="wrap">
   <header class="col topbar">
-    <span class="wordmark"><svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M8 38L4 12l14 11L32 4l14 19 14-11-4 26z"/><path d="M9 44h46"/></svg><span id="site-title">Prom Night</span></span>
+    <span class="wordmark"><svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M8 38L4 12l14 11L32 4l14 19 14-11-4 26z"/><path d="M9 44h46"/></svg><span id="site-title"><span>《光序•耀光》</span><span>谢师宴暨高三毕业舞会</span></span></span>
     <div class="topbar-actions">
       <div class="lang" role="group" aria-label="Language / 语言">
         <button type="button" data-lang="zh" aria-pressed="true">中</button>
@@ -648,7 +653,7 @@ body[data-screen="album"] .col { max-width: 920px; }
       <div class="hero">
         <p class="eyebrow"><span class="ember lit"></span><span id="welcome-date"></span></p>
         <h1 class="display" id="welcome-title" tabindex="-1" data-focus>
-          <span class="lead" data-t="welcomeLead">高三舞会之夜</span>
+          <span class="lead" data-t="welcomeLead">《光序•耀光》谢师宴暨高三毕业舞会</span>
           <span class="line">Prom King</span>
           <span class="line"><span class="amp">&amp;</span> Prom Queen</span>
         </h1>
@@ -970,7 +975,7 @@ function makeFilmGL(canvas, preserve) {
   /* ---------- copy ---------- */
   const STR = {
     zh: {
-      eventDate: '28/11/2026（星期六）· 6:00 pm', welcomeLead: '高三舞会之夜',
+      eventDate: '28/11/2026（星期六）· 6:00 pm', welcomeLead: '《光序•耀光》谢师宴暨高三毕业舞会',
       welcomeIntro: '扫门票上的二维码就会自动登录。也可以在下面输入门票上的个人码。用它上传自己的照片、投票和拍照。',
       personal: '个人码', codeLabel: '个人码', login: '进入', qrNote: '请用手机自带的相机扫码。如果在 WhatsApp、Instagram 或微信里打开，请改用 Safari 或 Chrome。',
       seeAlbum: '看相册', organizer: '组织者入口',
@@ -1033,7 +1038,7 @@ function makeFilmGL(canvas, preserve) {
       offline: '网络断开了，恢复后会自动重试。', codeShort: '个人码是 8 位，例如 K7MQ-4PXA。', notMeSure: '再点一次确认退出',
     },
     en: {
-      eventDate: 'Sat 28 Nov 2026 · 6:00 pm', welcomeLead: 'Prom Night',
+      eventDate: 'Sat 28 Nov 2026 · 6:00 pm', welcomeLead: '《光序•耀光》谢师宴暨高三毕业舞会',
       welcomeIntro: 'Scan the QR code on your ticket to sign in, or type the personal code printed on it. Use it to add your photo, vote and shoot.',
       personal: 'Personal code', codeLabel: 'Personal code', login: 'Sign in', qrNote: 'Scan with your phone’s own camera. If it opens inside WhatsApp, Instagram or WeChat, switch to Safari or Chrome.',
       seeAlbum: 'See the album', organizer: 'Organizer login',
@@ -1214,7 +1219,7 @@ function makeFilmGL(canvas, preserve) {
     $('#welcome-date').textContent = t('eventDate');
     $('#code-go').innerHTML = esc(t('login')) + ARROW;
     $('#picker-q').placeholder = t('searchName');
-    $('#site-title').textContent = S.lang === 'zh' ? '高三舞会之夜' : 'Prom Night';
+    $('#site-title').innerHTML = '<span>《光序•耀光》</span><span>谢师宴暨高三毕业舞会</span>';
   }
   function render() {
     applyStrings();

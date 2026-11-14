@@ -1,5 +1,5 @@
 /**
- * 高三舞会之夜 — Google Apps Script backend.
+ * 《光序•耀光》谢师宴暨高三毕业舞会 — Google Apps Script backend.
  *
  * Lives inside a Google Sheet (Extensions → Apps Script). Stores people, ballots and photo records in the
  * sheet, and photos in Drive. The website calls it with POST requests whose body is JSON text.
@@ -56,7 +56,7 @@ function setup() {
   ensureSheet_('Album', ALBUM_COLS);
   ensureSheet_('Log', ['at', 'who', 'action', 'detail']);
   const settings = ensureSheet_('Settings', ['key', 'value']);
-  const defaults = { voting: 'closed', headshots: 'open', developAt: DEFAULT_DEVELOP_AT, developed: 'auto', title: '高三舞会之夜' };
+  const defaults = { voting: 'closed', headshots: 'open', developAt: DEFAULT_DEVELOP_AT, developed: 'auto', title: '《光序•耀光》谢师宴暨高三毕业舞会' };
   const have = settings.getDataRange().getValues().map(r => r[0]);
   Object.keys(defaults).forEach(k => { if (have.indexOf(k) < 0) settings.appendRow([k, defaults[k]]); });
   ss.getSheets().forEach(sh => { if (['People', 'Ballots', 'Album', 'Log', 'Settings'].indexOf(sh.getName()) < 0 && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh); });
